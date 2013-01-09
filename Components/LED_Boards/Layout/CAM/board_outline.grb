@@ -1,0 +1,82 @@
+G04 FreePCB version 1.359*
+G04 D:\Dropbox\Projects\Costume_2012\Components\LED_Boards\Layout\CAM\board_outline.grb*
+G04 board outline layer *
+G04 Scale: 100 percent, Rotated: No, Reflected: No *
+%FSLAX24Y24*%
+%MOIN*%
+%LN board outline *%
+G04 Rounded Rectangle Macro, params: W/2, H/2, R *
+%AMRNDREC*
+21,1,$1+$1,$2+$2-$3-$3,0,0,0*
+21,1,$1+$1-$3-$3,$2+$2,0,0,0*
+1,1,$3+$3,$1-$3,$2-$3*
+1,1,$3+$3,$3-$1,$2-$3*
+1,1,$3+$3,$1-$3,$3-$2*
+1,1,$3+$3,$3-$1,$3-$2*%
+G04 Rectangular Thermal Macro, params: W/2, H/2, T/2 *
+%AMRECTHERM*
+$4=$3/2*
+21,1,$1-$3,$2-$3,0-$1/2-$4,0-$2/2-$4,0*
+21,1,$1-$3,$2-$3,0-$1/2-$4,$2/2+$4,0*
+21,1,$1-$3,$2-$3,$1/2+$4,0-$2/2-$4,0*
+21,1,$1-$3,$2-$3,$1/2+$4,$2/2+$4,0*%
+%ADD10C,0.005000*%
+G90*
+G70D02*
+
+G04 Step and Repeat for panelization *
+
+G04 ----------------------- Draw board outline (positive)*
+%LPD*%
+G54D10*
+G01X0Y0D02*
+G01X40000Y0D01*
+G04 end of side 1*
+G01X40000Y40000D01*
+G04 end of side 2*
+G01X0Y40000D01*
+G04 end of side 3*
+G01X0Y1000D01*
+G04 end of side 4*
+G01X0Y0D01*
+
+G04 -------------- Draw Parts, Pads, Traces, Vias and Text (positive)*
+%LPD*%
+G04 Draw part R1*
+G04 Draw part R2*
+G04 Draw part R3*
+G04 Draw part R5*
+G04 Draw part R4*
+G04 Draw part R6*
+G04 Draw part R7*
+G04 Draw part R8*
+G04 Draw part R10*
+G04 Draw part R9*
+G04 Draw part H2*
+G04 Draw part H1*
+G04 Draw part D1*
+G04 Draw part D2*
+G04 Draw part D3*
+G04 Draw part D4*
+G04 Draw part D5*
+G04 Draw part D6*
+G04 Draw part D7*
+G04 Draw part D8*
+G04 Draw part D9*
+G04 Draw part D10*
+G04 Draw part D11*
+G04 Draw part D12*
+G04 Draw part D13*
+G04 Draw part D14*
+G04 Draw part D15*
+G04 Draw part D16*
+G04 Draw part D17*
+G04 Draw part D18*
+G04 Draw part D19*
+G04 Draw part D20*
+
+G04 Draw traces*
+
+G04 Draw Text*
+M00*
+M02*
