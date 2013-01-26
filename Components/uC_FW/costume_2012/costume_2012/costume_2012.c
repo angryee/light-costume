@@ -687,30 +687,34 @@ int main(void)
 			//filtered_y_axis accel in 32-bit fixed-point format
 			filtered_y_axis = adc_lp_filter(adc_y_axis);
 			filtered_y_axis = adc_hp_filter(filtered_y_axis);
-
-			
+			UDR0 = (uint8_t)(filtered_y_axis>>24);
+			while(FALSE==READ(UCSR0A,6));
+			_delay_us(150);
+			UDR0 = (uint8_t)(filtered_y_axis>>16);
+			while(FALSE==READ(UCSR0A,6));
+			_delay_us(150);
+			UDR0 = 0x77;
+			while(FALSE==READ(UCSR0A,6));
+			_delay_us(150);
 		}	
 
 		if(TRUE ==	READ(events,EVENT_DECIMATE))
 		{
 			velocity = compute_velocity(filtered_y_axis);
 
-
-				UDR0 = (uint8_t)(filtered_y_axis>>24);
+				/*
+				UDR0 = (uint8_t)(velocity>>8);
 				while(FALSE == READ(UCSR0A,6));
-				UDR0 = (uint8_t)(filtered_y_axis>>16);
+				
+				UDR0 = (uint8_t)(velocity);
 				while(FALSE == READ(UCSR0A,6));
-
-/*
-			if(filtered_y_axis < -1*0x00060000)
-			{
-				UDR0 = (uint8_t)(filtered_y_axis>>24);
-				while(FALSE == READ(UCSR0A,6));
-				UDR0 = (uint8_t)(filtered_y_axis>>16);
-				while(FALSE == READ(UCSR0A,6));
-			}
-*/
-
+				//This is a sync character
+				//It tells realterm to start a new line after this character
+				//This is specifically chosen to not be something that is likely to show up in data
+				//but it might
+				UDR0 = 0x77;
+				while(FALSE==READ(UCSR0A,6));
+				*/
 		}	
 		
 		if(TRUE == READ(events,EVENT_FORWARD_MOTION))

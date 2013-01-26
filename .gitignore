@@ -1,2 +1,6 @@
 ./Tools
+*.autosave
+*.bak
+./Components/uC_Board/Layout/Autosave
+
 
