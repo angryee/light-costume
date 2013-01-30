@@ -604,6 +604,7 @@ int main(void)
 			filtered_y_axis = adc_hp_filter(filtered_y_axis);
 			UDR0 = (uint8_t)(filtered_y_axis>>24);
 			while(FALSE==READ(UCSR0A,6));
+			
 			//Without these delays the FTDI chip can't keep up with the serial data. Sad really.
 			_delay_us(150);
 			UDR0 = (uint8_t)(filtered_y_axis>>16);

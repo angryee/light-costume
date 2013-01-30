@@ -15,17 +15,17 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING
   5 .debug_aranges 00000120  00000000  00000000  00001230  2**3
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_info   00000dc3  00000000  00000000  00001350  2**0
+  6 .debug_info   00000dad  00000000  00000000  00001350  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_abbrev 00000453  00000000  00000000  00002113  2**0
+  7 .debug_abbrev 00000400  00000000  00000000  000020fd  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_line   00000740  00000000  00000000  00002566  2**0
+  8 .debug_line   00000743  00000000  00000000  000024fd  2**0
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_frame  0000016c  00000000  00000000  00002ca8  2**2
+  9 .debug_frame  0000016c  00000000  00000000  00002c40  2**2
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_str    00000435  00000000  00000000  00002e14  2**0
+ 10 .debug_str    00000435  00000000  00000000  00002dac  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_loc    00000753  00000000  00000000  00003249  2**0
+ 11 .debug_loc    00000753  00000000  00000000  000031e1  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -117,12 +117,12 @@ int32_t adc_lp_filter(uint8_t adc_sample)
   b8:	1f 93       	push	r17
   ba:	cf 93       	push	r28
   bc:	c8 2f       	mov	r28, r24
-	//the problem is adding two small #'s: it can lead to incorrect results
-	//The solution in this case is to add the two numbers then multiply them
-	//This works since B0 and B1 are the same #
-	temp = (int32_t)adc_sample*LPF_B0;
-	temp2 = (int32_t)last_sample*LPF_B1;
-	temp3 = ((int64_t)last_result*LPF_A1)>>16;
+	  16 extra decimal bits that you have to ignore*/
+
+	temp = (int32_t)adc_sample*LPF_B0;		/*This one doesn't need extra overhead because 8bit * 32bit 
+											  fixed-point gives you 32bit fixed-point*/
+	temp2 = (int32_t)last_sample*LPF_B1;	/*Same thing here*/
+	temp3 = ((int64_t)last_result*LPF_A1)>>16;	/*This calculation need the extra overhead because it's 2 32-bit fixed
   be:	80 91 01 01 	lds	r24, 0x0101
   c2:	90 91 02 01 	lds	r25, 0x0102
   c6:	a0 91 03 01 	lds	r26, 0x0103
@@ -162,12 +162,12 @@ int32_t adc_lp_filter(uint8_t adc_sample)
  112:	93 2e       	mov	r9, r19
  114:	a4 2e       	mov	r10, r20
  116:	b5 2e       	mov	r11, r21
-	//result = B0*adc_sample + B1*last_sample - A1*last_result
-	//the problem is adding two small #'s: it can lead to incorrect results
-	//The solution in this case is to add the two numbers then multiply them
-	//This works since B0 and B1 are the same #
-	temp = (int32_t)adc_sample*LPF_B0;
-	temp2 = (int32_t)last_sample*LPF_B1;
+	  When you multiply two 32-bit fixed-point integers together you get 
+	  16 extra decimal bits that you have to ignore*/
+
+	temp = (int32_t)adc_sample*LPF_B0;		/*This one doesn't need extra overhead because 8bit * 32bit 
+											  fixed-point gives you 32bit fixed-point*/
+	temp2 = (int32_t)last_sample*LPF_B1;	/*Same thing here*/
  118:	60 91 00 01 	lds	r22, 0x0100
  11c:	70 e0       	ldi	r23, 0x00	; 0
  11e:	80 e0       	ldi	r24, 0x00	; 0
@@ -179,7 +179,8 @@ int32_t adc_lp_filter(uint8_t adc_sample)
  12a:	0e 94 c4 04 	call	0x988	; 0x988 <__mulsi3>
  12e:	dc 01       	movw	r26, r24
  130:	cb 01       	movw	r24, r22
-	temp3 = ((int64_t)last_result*LPF_A1)>>16;
+	temp3 = ((int64_t)last_result*LPF_A1)>>16;	/*This calculation need the extra overhead because it's 2 32-bit fixed
+											      point values multiplied together*/
 	
 	result = temp + temp2 + (int32_t)temp3;
  132:	6c 01       	movw	r12, r24
@@ -188,12 +189,12 @@ int32_t adc_lp_filter(uint8_t adc_sample)
  138:	d9 1c       	adc	r13, r9
  13a:	ea 1c       	adc	r14, r10
  13c:	fb 1c       	adc	r15, r11
-	//Floating point warning!  Don't do this:
-	//result = B0*adc_sample + B1*last_sample - A1*last_result
-	//the problem is adding two small #'s: it can lead to incorrect results
-	//The solution in this case is to add the two numbers then multiply them
-	//This works since B0 and B1 are the same #
-	temp = (int32_t)adc_sample*LPF_B0;
+	
+	/*Make sure you have enough 'room' to do these calculations by casting:
+	  When you multiply two 32-bit fixed-point integers together you get 
+	  16 extra decimal bits that you have to ignore*/
+
+	temp = (int32_t)adc_sample*LPF_B0;		/*This one doesn't need extra overhead because 8bit * 32bit 
  13e:	6c 2f       	mov	r22, r28
  140:	70 e0       	ldi	r23, 0x00	; 0
  142:	80 e0       	ldi	r24, 0x00	; 0
@@ -201,8 +202,10 @@ int32_t adc_lp_filter(uint8_t adc_sample)
  146:	0e 94 c4 04 	call	0x988	; 0x988 <__mulsi3>
  14a:	dc 01       	movw	r26, r24
  14c:	cb 01       	movw	r24, r22
-	temp2 = (int32_t)last_sample*LPF_B1;
-	temp3 = ((int64_t)last_result*LPF_A1)>>16;
+											  fixed-point gives you 32bit fixed-point*/
+	temp2 = (int32_t)last_sample*LPF_B1;	/*Same thing here*/
+	temp3 = ((int64_t)last_result*LPF_A1)>>16;	/*This calculation need the extra overhead because it's 2 32-bit fixed
+											      point values multiplied together*/
 	
 	result = temp + temp2 + (int32_t)temp3;
  14e:	c8 0e       	add	r12, r24
@@ -468,6 +471,8 @@ int32_t adc_hp_filter(int32_t adc_sample)
  344:	08 95       	ret
 
 00000346 <compute_velocity>:
+
+/*The goal was to integrate the filtered acceleration data to get velocity, but the random walk really nixes that*/
 
 int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point integer*/int32_t filtered_y_accel)	
 {
@@ -783,8 +788,8 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
  492:	2f 2e       	mov	r2, r31
  494:	33 24       	eor	r3, r3
  496:	f0 2d       	mov	r31, r0
+			//the data here to ascertain whether the wearer is moving forward
 			
-		
 			//filtered_y_axis accel in 32-bit fixed-point format
 			filtered_y_axis = adc_lp_filter(adc_y_axis);
 			filtered_y_axis = adc_hp_filter(filtered_y_axis);
@@ -801,6 +806,7 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
 			UDR0 = (uint8_t)(filtered_y_axis>>16);
 			while(FALSE==READ(UCSR0A,6));
 			_delay_us(150);
+			//Sync character - not quite guaranteed never to show up in actual data, but close
 			UDR0 = 0x77;
  4a6:	0f 2e       	mov	r0, r31
  4a8:	f7 e7       	ldi	r31, 0x77	; 119
@@ -910,7 +916,9 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
  54c:	d1 01       	movw	r26, r2
  54e:	8c 91       	ld	r24, X
 			
-		
+			//Most of this is debug code at the moment - I need to figure out how to process
+			//the data here to ascertain whether the wearer is moving forward
+			
 			//filtered_y_axis accel in 32-bit fixed-point format
 			filtered_y_axis = adc_lp_filter(adc_y_axis);
  550:	0e 94 53 00 	call	0xa6	; 0xa6 <adc_lp_filter>
@@ -943,6 +951,8 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
  578:	f1 f7       	brne	.-4      	; 0x576 <main+0x1bc>
  57a:	00 c0       	rjmp	.+0      	; 0x57c <main+0x1c2>
  57c:	00 00       	nop
+			
+			//Without these delays the FTDI chip can't keep up with the serial data. Sad really.
 			_delay_us(150);
 			UDR0 = (uint8_t)(filtered_y_axis>>16);
  57e:	c7 01       	movw	r24, r14
@@ -963,6 +973,7 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
  59a:	00 c0       	rjmp	.+0      	; 0x59c <main+0x1e2>
  59c:	00 00       	nop
 			_delay_us(150);
+			//Sync character - not quite guaranteed never to show up in actual data, but close
 			UDR0 = 0x77;
  59e:	d5 01       	movw	r26, r10
  5a0:	9c 92       	st	X, r9
@@ -988,11 +999,11 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
  5bc:	c7 01       	movw	r24, r14
  5be:	b6 01       	movw	r22, r12
  5c0:	0e 94 a3 01 	call	0x346	; 0x346 <compute_velocity>
-				UDR0 = 0x77;
-				while(FALSE==READ(UCSR0A,6));
 				*/
 		}	
 		
+		//The rest of this is supposed to handle the lighting of lights based on events
+		//It is not yet complete
 		if(TRUE == READ(events,EVENT_FORWARD_MOTION))
  5c4:	80 91 0a 01 	lds	r24, 0x010A
  5c8:	84 fd       	sbrc	r24, 4
@@ -1008,9 +1019,7 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
 			//Turn yellow light on for 3s, then 
 			CLEAR(PORTD,7);
  5d2:	5f 98       	cbi	0x0b, 7	; 11
-		//TOGGLE(PORTD,7);
-		//PIND |= (1<<7);	
-
+		}		
 		
 		//Clear all events in this frame
 		events = 0x0000;
@@ -1061,6 +1070,9 @@ int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point int
  636:	a0 93 0c 01 	sts	0x010C, r26
  63a:	b0 93 0d 01 	sts	0x010D, r27
 
+			//The plan was to decimate the data prior to integrating, so this event would
+			//be signaled every 20Hz to perform the decimation and velocity calculation. 
+			//It's still here but it probably won't work that way in the end.
 			switch(ticks)
  63e:	48 3c       	cpi	r20, 0xC8	; 200
  640:	51 05       	cpc	r21, r1
