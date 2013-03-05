@@ -28,12 +28,13 @@
       <ToolName>AVR Dragon</ToolName>
       <ToolNumber>00A200006230</ToolNumber>
       <KeepTimersRunning>true</KeepTimersRunning>
-      <OverrideVtor>false</OverrideVtor>
+      <OverrideVtor>
+      </OverrideVtor>
       <OverrideVtorValue>
       </OverrideVtorValue>
       <Channel>
         <host>127.0.0.1</host>
-        <port>4468</port>
+        <port>4425</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
