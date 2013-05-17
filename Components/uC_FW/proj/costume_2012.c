@@ -99,20 +99,10 @@ enum
 	EVENT_DECIMATE,
 	EVENT_PUSHBUTTON,
 	EVENT_READ_ADC_Y,
-	EVENT_FORWARD_MOTION,
-	EVENT_HALT
+	EVENT_TX_ADC_DATA
 };
 
-/*I (will eventually) use a state machine to control the software execution.  These are the various states*/
-enum acceleration_state_machine
-{
-	IDLE,					//Just chillin
-	BEGIN_FORWARD_ACCEL,	
-	END_FORWARD_ACCEL,
-	FORWARD_MOTION,
-	BEGIN_REVERSE_ACCEL,
-	END_REVERSE_ACCEL	
-};
+
 
 /*A handy typedef to add boolean support*/
 typedef uint8_t boolean;
@@ -186,29 +176,14 @@ int32_t adc_hp_filter(int32_t adc_sample)
 	return result;
 }
 
-/*The goal was to integrate the filtered acceleration data to get velocity, but the random walk really nixes that*/
-
-int16_t compute_velocity(/*This is already expressed in a 32-bit fixed-point integer*/int32_t filtered_y_accel)	
-{
-	static int32_t current_velocity= 0x00000000;
-	static int32_t last_accel = 0x00000000;
-	
-	current_velocity += ((last_accel+filtered_y_accel)>>1);
-	last_accel = filtered_y_accel;
-
-	return (current_velocity>>16);	//Return only integer portion
-}
 int main(void)
 {
-	boolean a;
-	boolean timer_overflow;
-	uint8_t i;
+	boolean timer_overflow = FALSE;
+	boolean transmit_adc_enabled = FALSE;
 	uint8_t adc_y_axis;
-	uint8_t accel_state = IDLE;
-	int32_t filtered_y_axis = 0;
-	uint8_t uart_tx = 0;
-	int16_t velocity = 0x0000;
-	int16_t last_velocity = 0x0000;
+
+
+
 	//Init
 	
 	//System Clock Options
@@ -442,7 +417,7 @@ int main(void)
 	DIDR0 = 0x0F;	//Turn off digital filtering on ADC channels 0-3
 	
 	
-	//Configure UART for 115200 8N1 Tx Communication
+	//Configure UART for 38400 8N1 Tx Communication
 	//We want to transmit accelerometer information for debug purposes
 	
 	//Step 1 - Baud rate
@@ -467,13 +442,14 @@ int main(void)
 	//Bit 7 - Rx Complete Interrupt Enable - 0
 	//Bit 6 - Tx Complete Interrupt Enable - 0
 	//Bit 5 - USART Data Register Empty interrupt enable - 0
-	//Bit 4 - Receiver Enable - Set to 0
+	//Bit 4 - Receiver Enable - Set to 1
 	//Bit 3 - Transmitter Enable - Set to 1
 	//Bit 2 - Character Size Bit 2 - Set to 0 for 8 bits
 	//Bit 1 - 9th receive bit - Ignore
 	//Bit 0 - 9th transmit bit - Ignore
 	
-	UCSR0B = 0x00 | (1 << 3);
+	UCSR0B = 0x00	| (1 << 3)
+					| (1 << 4);
 	
 	//UCSR0C - UART 0 Control and Status Register C
 	//ATMega328 Datasheet Section 20.11.4 - Pg 196
@@ -567,20 +543,14 @@ int main(void)
 			}
 		}			
 		
-		//Check pushbutton
-		if(TRUE == NOT(READ(PINC,4)))
-		{
-			SET(events,EVENT_PUSHBUTTON);
-		}
-
 		//This 500ms tick is for the heartbeat LED, but I'm currently using the LED for debug, so no heartbeat
-/*
+
 		//Handle 500ms tick
 		if(TRUE == READ(events,EVENT_500MS))
 		{
 			TOGGLE(PORTD,7);
 		}
-*/
+
 		//Handle reading ADC - Y axis
 		if(TRUE == READ(events,EVENT_READ_ADC_Y))
 		{
@@ -596,58 +566,31 @@ int main(void)
 
 			adc_y_axis = ADCH;	//Transfer ADC result to y-axis variable
 			
-			//Most of this is debug code at the moment - I need to figure out how to process
-			//the data here to ascertain whether the wearer is moving forward
-			
-			//filtered_y_axis accel in 32-bit fixed-point format
-			filtered_y_axis = adc_lp_filter(adc_y_axis);
-			filtered_y_axis = adc_hp_filter(filtered_y_axis);
-			UDR0 = (uint8_t)(filtered_y_axis>>24);
-			while(FALSE==READ(UCSR0A,6));
-			
-			//Without these delays the FTDI chip can't keep up with the serial data. Sad really.
-			_delay_us(150);
-			UDR0 = (uint8_t)(filtered_y_axis>>16);
-			while(FALSE==READ(UCSR0A,6));
-			_delay_us(150);
-			//Sync character - not quite guaranteed never to show up in actual data, but close
-			UDR0 = 0x77;
-			while(FALSE==READ(UCSR0A,6));
-			_delay_us(150);
+			/*	If USART is in the middle of a transmission then delay until 
+				it's finished.
+				You may be wondering - why not put this after the transmit?  
+				In this case I'm only sending one byte so I don't need to 
+				wait for the USART to finish to send another.  I can do useful
+				work while the USART is transmitting instead of just blocking 
+				until it's done for no good reason
+			*/
+			SET(events,EVENT_TX_ADC_DATA);
 		}	
 
-		if(TRUE ==	READ(events,EVENT_DECIMATE))
+		if(READ(events,EVENT_TX_ADC_DATA) && (TRUE == transmit_adc_enabled))
 		{
-			velocity = compute_velocity(filtered_y_axis);
-			
-				//Debug code - commented out because I'm not debugging this right now
-				/*
-				UDR0 = (uint8_t)(velocity>>8);
-				while(FALSE == READ(UCSR0A,6));
-				
-				UDR0 = (uint8_t)(velocity);
-				while(FALSE == READ(UCSR0A,6));
-				//This is a sync character
-				//It tells realterm to start a new line after this character
-				//This is specifically chosen to not be something that is likely to show up in data
-				//but it might
-				UDR0 = 0x77;
-				while(FALSE==READ(UCSR0A,6));
-				*/
-		}	
-		
-		//The rest of this is supposed to handle the lighting of lights based on events
-		//It is not yet complete
-		if(TRUE == READ(events,EVENT_FORWARD_MOTION))
-		{
-			SET(PORTD,7);			
+			while(FALSE == READ(UCSR0A,6));	
+			UDR0 = (uint8_t)(adc_y_axis);
 		}
-
-		if(TRUE == READ(events,EVENT_HALT))
+		
+		/*	ADC data transmission is toggled by sending a '0' character - 0x30 hex*/
+		if(TRUE == (READ(UCSR0A,7)))
 		{
-			//Turn yellow light on for 3s, then 
-			CLEAR(PORTD,7);
-		}		
+			if(0x30 == UDR0)
+			{
+				transmit_adc_enabled = ((TRUE == transmit_adc_enabled)?FALSE:TRUE);
+			}
+		}
 		
 		//Clear all events in this frame
 		events = 0x0000;
